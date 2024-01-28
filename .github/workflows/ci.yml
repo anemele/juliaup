@@ -42,32 +42,26 @@ jobs:
       with:
         name: ${{matrix.label}}
         path: |
-          # NOTICE! I do not know how to set the working directory in a step.
-          # If use `run` instead of `uses actions/*`, can use `cd juliaup`,
-          # but here use the `juliaup` prefix.
           juliaup/target/${{matrix.target}}/release/juliaup.exe
           juliaup/target/${{matrix.target}}/release/julia.exe
+        # NOTICE! I do not know how to set the working directory in a step.
+        # If use `run` instead of `uses actions/*`, can use `cd juliaup`,
+        # but here use the `juliaup` prefix.
         # working-directory: juliaup
 
   package-portable:
     needs: [build]
     environment: package
     runs-on: ubuntu-latest
-    # if: startsWith(github.ref, 'refs/tags/')
     steps:
     - name: Download x86_64-pc-windows-msvc-portable artifact
       uses: actions/download-artifact@v3
       with:
         name: x86_64-pc-windows-msvc-portable
         path: target/x86_64-pc-windows-msvc-portable
-    - name: Export version
-      run: |
-        export VERSION=$(echo $GH_REF | sed 's:refs/tags/v::')
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-      env:
-          GH_REF: ${{ github.ref }}
     - name: Create archives
       run: |
+        cd julia
         mkdir public
         cd target/x86_64-pc-windows-msvc-portable
         zip -r ../../public/juliaup-${{ env.VERSION }}-x86_64-pc-windows-msvc-portable.zip .
@@ -80,7 +74,6 @@ jobs:
   deploy-github-release-binaries:
     needs: [package-portable]
     runs-on: ubuntu-latest
-    # if: startsWith(github.ref, 'refs/tags/')
     steps:
     - uses: actions/download-artifact@v3
       with:
