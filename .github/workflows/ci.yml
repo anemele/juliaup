@@ -28,7 +28,7 @@ jobs:
     # - uses: actions/checkout@v4
     - name: Clone juliaup repo
       run: |
-        git clone https://github.com/JuliaLang/juliaup
+        git clone https://github.com/JuliaLang/juliaup --depth=1
         # pwd
         # tree
     - uses: actions-rs/toolchain@v1
@@ -37,18 +37,19 @@ jobs:
         default: true
         target: ${{matrix.target}}
     - name: Release build
+      # Here was an action: clechasseur/rs-cargo
       run: |
         cd juliaup
         cargo build --release ${{matrix.bins}} --target ${{matrix.target}}
     - uses: actions/upload-artifact@v3
+      # NOTICE! I do not know how to set the working directory in a step.
+      # If use `run` instead of `uses actions/*`, can use `cd xxx`.
+      # Here use the `juliaup` prefix.
       with:
         name: ${{matrix.label}}
         path: |
           juliaup/target/${{matrix.target}}/release/juliaup.exe
           juliaup/target/${{matrix.target}}/release/julia.exe
-        # NOTICE! I do not know how to set the working directory in a step.
-        # If use `run` instead of `uses actions/*`, can use `cd juliaup`,
-        # but here use the `juliaup` prefix.
         # working-directory: juliaup
 
   package-portable:
