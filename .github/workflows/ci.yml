@@ -28,7 +28,6 @@ jobs:
       run: |
         git clone https://github.com/JuliaLang/juliaup
         pwd
-      working-directory: juliaup
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{matrix.toolchain}}
