@@ -39,18 +39,18 @@ jobs:
         command: build
         use-cross: ${{ matrix.os == 'ubuntu' }}
         args: --release ${{matrix.bins}} --target ${{matrix.target}}
+        working-directory: juliaup
       env:
         CARGO_TARGET_x86_64-unknown-linux-musl: ${{matrix.rustflags}}
         CARGO_TARGET_i686-unknown-linux-musl: ${{matrix.rustflags}}
         CARGO_TARGET_aarch64-unknown-linux-musl: ${{matrix.rustflags}}
-      working-directory: juliaup
     - uses: actions/upload-artifact@v3
       with:
         name: ${{matrix.label}}
         path: |
           target/${{matrix.target}}/release/juliaup.exe
           target/${{matrix.target}}/release/julia.exe
-      working-directory: juliaup
+        working-directory: juliaup
 
   package-portable:
     needs: [build]
