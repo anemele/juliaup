@@ -1,0 +1,118 @@
+name: Build and Release
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+
+  build:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        label: [
+          x86_64-pc-windows-msvc-portable
+          ]
+        include:
+          - label: x86_64-pc-windows-msvc-portable
+            target: x86_64-pc-windows-msvc
+            bins: --bin juliaup --bin julia
+            os: windows
+            features: binjulialauncher
+            rustflags:
+            toolchain: stable
+    steps:
+    # - uses: actions/checkout@v4
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{matrix.toolchain}}
+        default: true
+        target: ${{matrix.target}}
+    - name: Release build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        use-cross: ${{ matrix.os == 'ubuntu' }}
+        args: --release ${{matrix.bins}} --target ${{matrix.target}}
+      env:
+        CARGO_TARGET_x86_64-unknown-linux-musl: ${{matrix.rustflags}}
+        CARGO_TARGET_i686-unknown-linux-musl: ${{matrix.rustflags}}
+        CARGO_TARGET_aarch64-unknown-linux-musl: ${{matrix.rustflags}}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{matrix.label}}
+        path: |
+          target/${{matrix.target}}/release/juliaup.exe
+          target/${{matrix.target}}/release/julia.exe
+
+  test:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        target: [
+          x86_64-pc-windows-msvc
+          ]
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows
+            features:
+            rustflags:
+            toolchain: stable
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{matrix.toolchain}}
+        default: true
+        target: ${{matrix.target}}
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        use-cross: ${{ matrix.os == 'ubuntu' }}
+        args: --target ${{matrix.target}}
+
+  package-portable:
+    needs: [build,test]
+    environment: package
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - name: Download x86_64-pc-windows-msvc-portable artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: x86_64-pc-windows-msvc-portable
+        path: target/x86_64-pc-windows-msvc-portable
+    - name: Export version
+      run: |
+        export VERSION=$(echo $GH_REF | sed 's:refs/tags/v::')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+      env:
+          GH_REF: ${{ github.ref }}
+    - name: Create archives
+      run: |
+        mkdir public
+        cd target/x86_64-pc-windows-msvc-portable
+        zip -r ../../public/juliaup-${{ env.VERSION }}-x86_64-pc-windows-msvc-portable.zip .
+        cd ../..
+    - uses: actions/upload-artifact@v3
+      with:
+        name: portable
+        path: public/*.*
+
+  deploy-github-release-binaries:
+    needs: [package-portable]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: portable
+        path: public
+    - name: Release
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: "public/*.*"
+        allowUpdates: true
+        prerelease: false
