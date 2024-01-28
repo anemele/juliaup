@@ -42,9 +42,12 @@ jobs:
       with:
         name: ${{matrix.label}}
         path: |
-          target/${{matrix.target}}/release/juliaup.exe
-          target/${{matrix.target}}/release/julia.exe
-        working-directory: juliaup
+          # NOTICE! I do not know how to set the working directory in a step.
+          # If use `run` instead of `uses actions/*`, can use `cd juliaup`,
+          # but here use the `juliaup` prefix.
+          juliaup/target/${{matrix.target}}/release/juliaup.exe
+          juliaup/target/${{matrix.target}}/release/julia.exe
+        # working-directory: juliaup
 
   package-portable:
     needs: [build]
