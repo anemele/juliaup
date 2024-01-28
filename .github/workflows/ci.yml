@@ -35,16 +35,9 @@ jobs:
         default: true
         target: ${{matrix.target}}
     - name: Release build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        use-cross: ${{ matrix.os == 'ubuntu' }}
-        args: --release ${{matrix.bins}} --target ${{matrix.target}}
-        working-directory: ./juliaup
-      env:
-        CARGO_TARGET_x86_64-unknown-linux-musl: ${{matrix.rustflags}}
-        CARGO_TARGET_i686-unknown-linux-musl: ${{matrix.rustflags}}
-        CARGO_TARGET_aarch64-unknown-linux-musl: ${{matrix.rustflags}}
+      run: |
+        cd juliaup
+        cargo build --release ${{matrix.bins}} --target ${{matrix.target}}
     - uses: actions/upload-artifact@v3
       with:
         name: ${{matrix.label}}
