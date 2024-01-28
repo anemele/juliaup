@@ -61,6 +61,7 @@ jobs:
         path: target/x86_64-pc-windows-msvc-portable
     - name: Create archives
       run: |
+        tree
         cd juliaup
         mkdir public
         cd target/x86_64-pc-windows-msvc-portable
