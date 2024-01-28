@@ -64,7 +64,7 @@ jobs:
         # tree
         mkdir public
         cd target/x86_64-pc-windows-msvc-portable
-        zip -r ../../public/juliaup-${date +%Y%m%d}-x86_64-pc-windows-msvc-portable.zip .
+        zip -r ../../public/juliaup-$(date +%Y%m%d)-x86_64-pc-windows-msvc-portable.zip .
         cd ../..
     - uses: actions/upload-artifact@v3
       with:
