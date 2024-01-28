@@ -54,6 +54,9 @@ jobs:
     environment: package
     runs-on: ubuntu-latest
     steps:
+    - name: Get Current Date
+      id: date
+      run: echo "::set-output name=date::$(date +%Y%m%d)"
     - name: Download x86_64-pc-windows-msvc-portable artifact
       uses: actions/download-artifact@v3
       with:
@@ -64,7 +67,7 @@ jobs:
         # tree
         mkdir public
         cd target/x86_64-pc-windows-msvc-portable
-        zip -r ../../public/juliaup-$(date +%Y%m%d)-x86_64-pc-windows-msvc-portable.zip .
+        zip -r ../../public/juliaup-${{ steps.date.outputs.date }}-x86_64-pc-windows-msvc-portable.zip .
         cd ../..
     - uses: actions/upload-artifact@v3
       with:
@@ -75,6 +78,9 @@ jobs:
     needs: [package-portable]
     runs-on: ubuntu-latest
     steps:
+    - name: Get Current Date
+      id: date
+      run: echo "::set-output name=date::$(date +%Y%m%d)"
     - uses: actions/download-artifact@v3
       with:
         name: portable
@@ -86,3 +92,4 @@ jobs:
         artifacts: "public/*.*"
         allowUpdates: true
         prerelease: false
+        tag: ${{ steps.date.outputs.date }}
