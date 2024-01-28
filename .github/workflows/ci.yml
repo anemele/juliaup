@@ -23,6 +23,10 @@ jobs:
             toolchain: stable
     steps:
     # - uses: actions/checkout@v4
+    - name: Clone juliaup repo
+      run: |
+        git clone https://github.com/JuliaLang/juliaup
+        cd juliaup
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{matrix.toolchain}}
