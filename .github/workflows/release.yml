@@ -1,9 +1,9 @@
 name: Build and Release
 
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
   schedule:
     - cron: '0 0 1 * *'
 
@@ -24,23 +24,59 @@ jobs:
             features: binjulialauncher
             rustflags:
             toolchain: stable
+    outputs:
+      tag-changed: ${{ steps.compare-tags.outputs.tag-changed }}
+      tag: ${{ steps.repo-latest-tag.outputs.tag }}
     steps:
     # - uses: actions/checkout@v4
     - name: Clone juliaup repo
       run: |
-        git clone https://github.com/JuliaLang/juliaup --depth=1
+        git clone https://github.com/JuliaLang/juliaup
         # pwd
         # tree
+    - name: Get latest tag
+      id: repo-latest-tag
+      run: |
+        cd juliaup
+        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+        echo "::set-output name=tag::$LATEST_TAG"
+
+    - name: Get latest release tag
+      id: release-latest-tag
+      run: |
+        RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+        LATEST_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
+        echo "::set-output name=tag::$LATEST_TAG"
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compare tags
+      id: compare-tags
+      run: |
+        LATEST_TAG_GITHUB=$(echo "${{ steps.repo-latest-tag.outputs.tag }}" | sed 's/v//')
+        LATEST_TAG_RELEASE=$(echo "${{ steps.release-latest-tag.outputs.tag }}" | sed 's/v//')
+        if [[ "$LATEST_TAG_GITHUB" == "$LATEST_TAG_RELEASE" ]]; then
+          echo "::set-output name=tag-changed::false"
+          exit 1
+        else
+          echo "::set-output name=tag-changed::true"
+        fi
+      shell: bash
+
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{matrix.toolchain}}
         default: true
         target: ${{matrix.target}}
+
     - name: Release build
       # Here was an action: clechasseur/rs-cargo
       run: |
         cd juliaup
         cargo build --release ${{matrix.bins}} --target ${{matrix.target}}
+
     - uses: actions/upload-artifact@v4
       # NOTICE! I do not know how to set the working directory in a step.
       # If use `run` instead of `uses actions/*`, can use `cd xxx`.
@@ -54,12 +90,10 @@ jobs:
 
   package-portable:
     needs: [build]
+    if: needs.build.outputs.tag-changed == 'true'
     environment: package
     runs-on: ubuntu-latest
     steps:
-    - name: Get Current Date
-      id: date
-      run: echo "::set-output name=date::$(date +%Y%m%d)"
     - name: Download x86_64-pc-windows-msvc-portable artifact
       uses: actions/download-artifact@v4
       with:
@@ -70,7 +104,7 @@ jobs:
         # tree
         mkdir public
         cd target/x86_64-pc-windows-msvc-portable
-        zip -r ../../public/juliaup-${{ steps.date.outputs.date }}-x86_64-pc-windows-msvc-portable.zip .
+        zip -r ../../public/juliaup-${{ needs.build.outputs.tag }}-x86_64-pc-windows-msvc-portable.zip .
         cd ../..
     - uses: actions/upload-artifact@v4
       with:
@@ -78,12 +112,9 @@ jobs:
         path: public/*.*
 
   deploy-github-release-binaries:
-    needs: [package-portable]
+    needs: [build, package-portable]
     runs-on: ubuntu-latest
     steps:
-    - name: Get Current Date
-      id: date
-      run: echo "::set-output name=date::$(date +%Y%m%d)"
     - uses: actions/download-artifact@v4
       with:
         name: portable
@@ -95,4 +126,4 @@ jobs:
         artifacts: "public/*.*"
         allowUpdates: true
         prerelease: false
-        tag: ${{ steps.date.outputs.date }}
+        tag: ${{ needs.build.outputs.tag }}
