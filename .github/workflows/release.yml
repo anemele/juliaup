@@ -39,7 +39,7 @@ jobs:
       run: |
         cd juliaup
         LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-        echo "::set-output name=tag::$LATEST_TAG"
+        echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
       shell: bash
 
     - name: Get latest release tag
@@ -48,7 +48,7 @@ jobs:
         RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           "https://api.github.com/repos/${{ github.repository }}/releases/latest")
         LATEST_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
-        echo "::set-output name=tag::$LATEST_TAG"
+        echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
       shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,10 +59,10 @@ jobs:
         LATEST_TAG_GITHUB=$(echo "${{ steps.repo-latest-tag.outputs.tag }}" | sed 's/v//')
         LATEST_TAG_RELEASE=$(echo "${{ steps.release-latest-tag.outputs.tag }}" | sed 's/v//')
         if [[ "$LATEST_TAG_GITHUB" == "$LATEST_TAG_RELEASE" ]]; then
-          echo "::set-output name=tag-changed::false"
+          echo "tag-changed=false" >> $GITHUB_OUTPUT
           exit 1
         else
-          echo "::set-output name=tag-changed::true"
+          echo "tag-changed=true" >> $GITHUB_OUTPUT
         fi
       shell: bash
 
