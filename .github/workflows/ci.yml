@@ -41,7 +41,7 @@ jobs:
       run: |
         cd juliaup
         cargo build --release ${{matrix.bins}} --target ${{matrix.target}}
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       # NOTICE! I do not know how to set the working directory in a step.
       # If use `run` instead of `uses actions/*`, can use `cd xxx`.
       # Here use the `juliaup` prefix.
@@ -61,7 +61,7 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +%Y%m%d)"
     - name: Download x86_64-pc-windows-msvc-portable artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: x86_64-pc-windows-msvc-portable
         path: target/x86_64-pc-windows-msvc-portable
@@ -72,7 +72,7 @@ jobs:
         cd target/x86_64-pc-windows-msvc-portable
         zip -r ../../public/juliaup-${{ steps.date.outputs.date }}-x86_64-pc-windows-msvc-portable.zip .
         cd ../..
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: portable
         path: public/*.*
@@ -84,7 +84,7 @@ jobs:
     - name: Get Current Date
       id: date
       run: echo "::set-output name=date::$(date +%Y%m%d)"
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: portable
         path: public
