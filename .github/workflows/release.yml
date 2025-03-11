@@ -40,6 +40,7 @@ jobs:
         cd juliaup
         LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
         echo "::set-output name=tag::$LATEST_TAG"
+      shell: bash
 
     - name: Get latest release tag
       id: release-latest-tag
