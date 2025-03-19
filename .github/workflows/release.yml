@@ -24,7 +24,7 @@ jobs:
             os: windows
             toolchain: stable
     outputs:
-      tag-changed: ${{ steps.compare-tags.outputs.tag-changed }}
+      # tag-changed: ${{ steps.compare-tags.outputs.tag-changed }}
       tag: ${{ steps.their-latest-tag.outputs.tag }}
 
     steps:
@@ -59,13 +59,13 @@ jobs:
         LATEST_TAG_RELEASE=$(echo "${{ steps.this-latest-tag.outputs.tag }}" | sed 's/v//')
         if [[ "$LATEST_TAG_GITHUB" == "$LATEST_TAG_RELEASE" ]]; then
           echo "tag-changed=false" >> $GITHUB_OUTPUT
-          exit 1
         else
           echo "tag-changed=true" >> $GITHUB_OUTPUT
         fi
       shell: bash
 
-    - uses: actions-rust-lang/setup-rust-toolchain@v1
+    - if: ${{ steps.compare-tags.outputs.tag-changed == 'true' }}
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: ${{ matrix.toolchain }}
         target: ${{ matrix.target }}
@@ -90,7 +90,7 @@ jobs:
   package-portable:
 
     needs: [build]
-    if: needs.build.outputs.tag-changed == 'true'
+    # if: needs.build.outputs.tag-changed == 'true'
     runs-on: ubuntu-latest
 
     steps:
