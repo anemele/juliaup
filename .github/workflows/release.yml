@@ -91,6 +91,8 @@ jobs:
 
     needs: [build]
     if: needs.build.outputs.tag-changed == 'true'
+    outputs:
+      tag: ${{ needs.build.outputs.tag }}
     runs-on: ubuntu-latest
 
     steps:
@@ -132,4 +134,4 @@ jobs:
         artifacts: "public/*.*"
         allowUpdates: true
         prerelease: false
-        tag: ${{ needs.build.outputs.tag }}
+        tag: ${{ needs.package-portable.outputs.tag }}
