@@ -5,11 +5,36 @@ on:
     branches:
       - main
   schedule:
+    # Every Sunday at 00:00 UTC
     - cron: '0 0 * * 6'
 
 jobs:
 
+  prepare:
+
+    runs-on: ubuntu-latest
+    outputs:
+      hasnew: ${{ steps.main.outputs.hasnew }}
+      tag: ${{ steps.main.outputs.tag }}
+      name: ${{ steps.main.outputs.name }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install .
+    - name: Run Python script
+      id: main
+      run: python main.py
+
   build:
+
+    needs: [prepare]
+    if: needs.prepare.outputs.hasnew == 'true'
 
     runs-on: ${{ matrix.os }}-latest
     strategy:
@@ -23,47 +48,14 @@ jobs:
             os: windows
             toolchain: stable
     outputs:
-      tag-changed: ${{ steps.compare-tags.outputs.tag-changed }}
-      tag: ${{ steps.their-latest-tag.outputs.tag }}
-    continue-on-error: true
+      tag: ${{ needs.prepare.outputs.tag }}
+      name: ${{ needs.prepare.outputs.name }}
 
     steps:
 
     - name: Clone juliaup repo
       run: |
         git clone https://github.com/JuliaLang/juliaup
-        # pwd
-        # tree
-
-    - name: Get juliaup repo latest tag
-      id: their-latest-tag
-      run: |
-        cd juliaup
-        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-        echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Get this repo latest tag
-      id: this-latest-tag
-      run: |
-        RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/latest")
-        LATEST_TAG=$(echo "$RESPONSE" | jq -r '.tag_name')
-        echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Compare tags
-      id: compare-tags
-      run: |
-        LATEST_TAG_GITHUB=$(echo "${{ steps.their-latest-tag.outputs.tag }}" | sed 's/v//')
-        LATEST_TAG_RELEASE=$(echo "${{ steps.this-latest-tag.outputs.tag }}" | sed 's/v//')
-        if [[ "$LATEST_TAG_GITHUB" == "$LATEST_TAG_RELEASE" ]]; then
-          echo "tag-changed=false" >> $GITHUB_OUTPUT
-          exit 1
-        else
-          echo "tag-changed=true" >> $GITHUB_OUTPUT
-        fi
-      shell: bash
 
     - uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
@@ -74,6 +66,7 @@ jobs:
       # Here was an action: clechasseur/rs-cargo
       run: |
         cd juliaup
+        git checkout ${{ needs.prepare.outputs.tag }}
         cargo build --release ${{ matrix.bins }} --target ${{ matrix.target }}
 
     - uses: actions/upload-artifact@v4
@@ -90,10 +83,10 @@ jobs:
   package-portable:
 
     needs: [build]
-    if: needs.build.outputs.tag-changed == 'true'
+    runs-on: ubuntu-latest
     outputs:
       tag: ${{ needs.build.outputs.tag }}
-    runs-on: ubuntu-latest
+      name: ${{ needs.build.outputs.name }}
 
     steps:
 
@@ -135,3 +128,4 @@ jobs:
         allowUpdates: true
         prerelease: false
         tag: ${{ needs.package-portable.outputs.tag }}
+        name: ${{ needs.package-portable.outputs.name }}
