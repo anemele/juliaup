@@ -15,8 +15,8 @@ name=v1.17.13
 """
 
 import os
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import dataclass, fields
+from typing import Literal, Sequence
 
 import requests
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -36,34 +36,42 @@ class Release:
     prerelease: bool
 
 
+type SEQ_RELEASE = Sequence[Release]
+
+
+# See: https://github.com/Fatal1ty/mashumaro/issues/69
+# See: https://github.com/Fatal1ty/mashumaro/issues/69#issuecomment-1819369289
+# The author said there is a solution, but I found it is not working.
+# So I use the following workaround.
 @dataclass
 class Wrapper(DataClassORJSONMixin):
-    releases: list[Release]
+    releases: SEQ_RELEASE
+
+    @classmethod
+    def from_bytes(cls, b: bytes) -> SEQ_RELEASE:
+        fc = b'{"releases":' + b + b"}"
+        return cls.from_json(fc).releases
 
 
-def get_two_repo_releases() -> tuple[Wrapper, Wrapper]:
+def get_two_repo_releases() -> tuple[SEQ_RELEASE, SEQ_RELEASE]:
     session = requests.Session()
     url = get_api_url("JuliaLang/juliaup")
     data1 = session.get(url)
     url = get_api_url("anemele/juliaup")
     data2 = session.get(url)
 
-    def wrap(c: bytes) -> Wrapper:
-        fc = b'{"releases":' + c + b"}"
-        return Wrapper.from_json(fc)
-
-    return wrap(data1.content), wrap(data2.content)
+    return Wrapper.from_bytes(data1.content), Wrapper.from_bytes(data2.content)
 
 
 # tag_name, name
-type DO_INFO = tuple[str, str]
+type TODO_INFO = tuple[str, str]
 
 
-def compare_and_decide(r1: list[Release], r2: list[Release]) -> DO_INFO | None:
+def compare_and_decide(r1: SEQ_RELEASE, r2: SEQ_RELEASE) -> TODO_INFO | None:
     if len(r1) == 0:
         return None
 
-    def find_latest_not_prerelease(rs: list[Release]) -> Release | None:
+    def find_latest_not_prerelease(rs: SEQ_RELEASE) -> Release | None:
         for r in rs:
             if not r.draft and not r.prerelease:
                 return r
@@ -83,32 +91,35 @@ def compare_and_decide(r1: list[Release], r2: list[Release]) -> DO_INFO | None:
         return r.tag_name, r.name
 
 
-def get_todo():
-    d1, d2 = get_two_repo_releases()
-    todo = compare_and_decide(d1.releases, d2.releases)
-    return todo
-
-
 @dataclass
 class GitHubOutput:
-    hasnew: Literal["true", "false"]
-    tag: str
-    name: str
+    hasnew: Literal["true", "false"] = "false"
+    tag: str = ""
+    name: str = ""
 
     def __str__(self):
-        return f"hasnew={self.hasnew}\ntag={self.tag}\nname={self.name}"
+        arr = []
+        for filed in fields(self):
+            arr.append(f"{filed.name}={getattr(self, filed.name)}")
+        return "\n".join(arr)
+
+
+def get_output() -> GitHubOutput:
+    r1, r2 = get_two_repo_releases()
+    todo = compare_and_decide(r1, r2)
+    if todo is None:
+        return GitHubOutput()
+    else:
+        return GitHubOutput("true", todo[0], todo[1])
 
 
 def main():
-    todo = get_todo()
-    if todo is None:
-        output = GitHubOutput("false", "", "")
-    else:
-        output = GitHubOutput("true", todo[0], todo[1])
+    output = get_output()
 
-    filename = os.environ["GITHUB_OUTPUT"]
+    filename = os.environ.get("GITHUB_OUTPUT", "debug.txt")
     with open(filename, "a") as fp:
         fp.write(str(output))
+        fp.write("\n")
 
 
 if __name__ == "__main__":
