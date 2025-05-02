@@ -53,6 +53,7 @@ jobs:
 
     steps:
 
+    - uses: actions/checkout@v4
     - name: Commit update
       run: |
         echo ${{ needs.prepare.outputs.tag }} > VERSION
