@@ -55,6 +55,9 @@ jobs:
 
     - uses: actions/checkout@v4
     - name: Commit update
+      # The trigger events have a `push - branches - main`
+      # If this step would cause a dead loop?
+      # It seems not.
       run: |
         echo ${{ needs.prepare.outputs.tag }} > VERSION
         git config --local user.email "action@github.com"
