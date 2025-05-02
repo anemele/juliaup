@@ -53,6 +53,15 @@ jobs:
 
     steps:
 
+    - name: Commit update
+      run: |
+        echo ${{ needs.prepare.outputs.tag }} > VERSION
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION
+        git commit -m ${{ needs.prepare.outputs.tag }}
+        git push
+
     - name: Clone juliaup repo
       run: |
         git clone https://github.com/JuliaLang/juliaup
