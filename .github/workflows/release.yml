@@ -31,6 +31,26 @@ jobs:
       id: main
       run: python main.py
 
+  # GitHub workflows would be closed if not active in 2 months.
+  # Therefore, do something to keep it alive.
+  # Such as add the current date into the VERSION file.
+  keep-alive:
+
+    needs: [prepare]
+    if: needs.prepare.outputs.hasnew == 'false'
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Commit update
+      run: |
+        echo $(date +%Y-%m-%d) >> VERSION
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION
+        git commit -m "Keep alive $(date +%Y-%m-%d)"
+        git push
+
   build:
 
     needs: [prepare]
